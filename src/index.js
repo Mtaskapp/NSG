@@ -70,14 +70,14 @@ const TG_PATH   = process.env.TELEGRAM_WEBHOOK_PATH || '/webhook/telegram';
 const LINE_PATH = process.env.LINE_WEBHOOK_PATH || '/webhook/line';
 
 app.use(WA_PATH,   waRouter);
-app.use(TG_PATH,   tgRouter);
-app.use(LINE_PATH, lineRouter);
+//app.use(TG_PATH,   tgRouter);
+//app.use(LINE_PATH, lineRouter);
 
 // Web widget API (always enabled unless explicitly disabled)
-if (process.env.WEB_WIDGET_ENABLED !== 'false') {
-  app.use('/api/chat', webRouter);
-  logger.info('[Web] Widget API enabled at /api/chat');
-}
+//if (process.env.WEB_WIDGET_ENABLED !== 'false') {
+//  app.use('/api/chat', webRouter);
+//  logger.info('[Web] Widget API enabled at /api/chat');
+//}
 
 // ── 404 / Error handlers ──────────────────────────────────────────────────────
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
@@ -97,8 +97,8 @@ app.listen(PORT, () => {
   logger.info(`   Health    → GET  /health`);
 
   // Boot adapters that need initialization
-  initTelegram();
-  initLine();
+  //initTelegram();
+ // initLine();
 });
 
 module.exports = app; // export for tests
