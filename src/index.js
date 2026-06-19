@@ -13,9 +13,9 @@ const logger      = require('./utils/logger');
 
 // Adapters
 const { router: waRouter }               = require('./adapters/whatsapp');
-//const { router: tgRouter, initTelegram } = require('./adapters/telegram');
-//const { router: lineRouter, initLine }   = require('./adapters/line');
-//const { router: webRouter }              = require('./adapters/web');
+const { router: tgRouter, initTelegram } = require('./adapters/telegram');
+const { router: lineRouter, initLine }   = require('./adapters/line');
+const { router: webRouter }              = require('./adapters/web');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -57,21 +57,21 @@ app.get('/health', (req, res) => {
     version: process.env.npm_package_version || '1.0.0',
     platforms: {
       whatsapp: !!process.env.WA_PHONE_NUMBER_ID,
-      //telegram: !!process.env.TELEGRAM_BOT_TOKEN,
-      //line:     !!process.env.LINE_CHANNEL_SECRET,
-      //web:      process.env.WEB_WIDGET_ENABLED !== 'false',
+      telegram: !!process.env.TELEGRAM_BOT_TOKEN,
+      line:     !!process.env.LINE_CHANNEL_SECRET,
+      web:      process.env.WEB_WIDGET_ENABLED !== 'false',
     },
   });
 });
 
 // ── Platform webhooks ─────────────────────────────────────────────────────────
 const WA_PATH   = process.env.WA_WEBHOOK_PATH   || '/webhook/whatsapp';
-//const TG_PATH   = process.env.TELEGRAM_WEBHOOK_PATH || '/webhook/telegram';
-//const LINE_PATH = process.env.LINE_WEBHOOK_PATH || '/webhook/line';
+const TG_PATH   = process.env.TELEGRAM_WEBHOOK_PATH || '/webhook/telegram';
+const LINE_PATH = process.env.LINE_WEBHOOK_PATH || '/webhook/line';
 
 app.use(WA_PATH,   waRouter);
-//app.use(TG_PATH,   tgRouter);
-//app.use(LINE_PATH, lineRouter);
+app.use(TG_PATH,   tgRouter);
+app.use(LINE_PATH, lineRouter);
 
 // Web widget API (always enabled unless explicitly disabled)
 if (process.env.WEB_WIDGET_ENABLED !== 'false') {
@@ -91,9 +91,9 @@ app.use((err, req, res, _next) => {
 app.listen(PORT, () => {
   logger.info(`🚀 SnapBot listening on port ${PORT} (${process.env.NODE_ENV || 'development'})`);
   logger.info(`   WhatsApp  → POST ${WA_PATH}`);
-  //logger.info(`   Telegram  → POST ${TG_PATH}`);
- //logger.info(`   LINE      → POST ${LINE_PATH}`);
-  //logger.info(`   Web API   → POST /api/chat`);
+  logger.info(`   Telegram  → POST ${TG_PATH}`);
+  logger.info(`   LINE      → POST ${LINE_PATH}`);
+  logger.info(`   Web API   → POST /api/chat`);
   logger.info(`   Health    → GET  /health`);
 
   // Boot adapters that need initialization
