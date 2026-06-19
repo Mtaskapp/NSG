@@ -13,9 +13,9 @@ const logger      = require('./utils/logger');
 
 // Adapters
 const { router: waRouter }               = require('./adapters/whatsapp');
-const { router: tgRouter, initTelegram } = require('./adapters/telegram');
-const { router: lineRouter, initLine }   = require('./adapters/line');
-const { router: webRouter }              = require('./adapters/web');
+//const { router: tgRouter, initTelegram } = require('./adapters/telegram');
+//const { router: lineRouter, initLine }   = require('./adapters/line');
+//const { router: webRouter }              = require('./adapters/web');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
