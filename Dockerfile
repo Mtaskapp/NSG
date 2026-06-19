@@ -2,7 +2,13 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+# Use npm ci when a lockfile is present (reproducible builds), otherwise fall
+# back to npm install so the build never fails due to a missing lockfile.
+RUN if [ -f package-lock.json ]; then \
+      npm ci --omit=dev; \
+    else \
+      npm install --omit=dev; \
+    fi && npm cache clean --force
 
 # ── Stage 2: final image ─────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
