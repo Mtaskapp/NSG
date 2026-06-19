@@ -26,21 +26,22 @@ function initLine() {
 }
 
 // ── Webhook endpoint ──────────────────────────────────────────────────────────
-router.post('/',
-  line.middleware(lineConfig),
-  async (req, res) => {
-    res.sendStatus(200);
-
-    for (const event of req.body.events) {
-      try {
-        await handleLineEvent(event);
-      } catch (err) {
-        logger.error('[LINE] Error handling event:', err);
-      }
+// In src/adapters/line.js, replace the router.post block with:
+router.post('/', (req, res, next) => {
+  if (!lineConfig.channelSecret) {
+    return res.sendStatus(200); // silently ignore if not configured
+  }
+  line.middleware(lineConfig)(req, res, next);
+}, async (req, res) => {
+  res.sendStatus(200);
+  for (const event of req.body.events) {
+    try {
+      await handleLineEvent(event);
+    } catch (err) {
+      logger.error('[LINE] Error handling event:', err);
     }
   }
-);
-
+});
 async function handleLineEvent(event) {
   if (!['message', 'postback'].includes(event.type)) return;
 
