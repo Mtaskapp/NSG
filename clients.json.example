@@ -1,0 +1,26 @@
+[
+  {
+    "id": "client-hyderabad",
+    "name": "Hyderabad Municipal Corporation",
+    "whatsapp": {
+      "phoneNumberId": "111111111111111",
+      "accessToken":   "EAAxxxx_CLIENT_1_TOKEN_xxxx",
+      "verifyToken":   "snapbot-verify-hyd-2024"
+    },
+    "sheets": {
+      "sheetId": "1ABC_HYDERABAD_SHEET_ID_HERE"
+    }
+  },
+  {
+    "id": "client-secunderabad",
+    "name": "Secunderabad Cantonment Board",
+    "whatsapp": {
+      "phoneNumberId": "222222222222222",
+      "accessToken":   "EAAyyyy_CLIENT_2_TOKEN_yyyy",
+      "verifyToken":   "snapbot-verify-sec-2024"
+    },
+    "sheets": {
+      "sheetId": "2DEF_SECUNDERABAD_SHEET_ID_HERE"
+    }
+  }
+]

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SnapBot – Civic Issue Reporter</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --brand:     #2563EB;
+      --brand-dk:  #1D4ED8;
+      --bg:        #F1F5F9;
+      --bubble-me: #2563EB;
+      --bubble-bot:#FFFFFF;
+      --text-me:   #FFFFFF;
+      --text-bot:  #1E293B;
+      --border:    #E2E8F0;
+      --radius:    16px;
+      --shadow:    0 4px 24px rgba(0,0,0,.12);
+    }
+
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           background: var(--bg); display: flex; justify-content: center;
+           align-items: center; min-height: 100vh; padding: 16px; }
+
+    /* ── Widget shell ───────────────────────────────────────────────── */
+    #snapbot {
+      width: 100%; max-width: 420px; height: 680px;
+      background: #fff; border-radius: 24px; box-shadow: var(--shadow);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    .sb-header {
+      background: var(--brand); color: #fff; padding: 14px 20px;
+      display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+    }
+    .sb-avatar {
+      width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.2);
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+    .sb-header-info { flex: 1; }
+    .sb-header-info strong { font-size: 15px; display: block; }
+    .sb-header-info span   { font-size: 12px; opacity: .8; }
+    .sb-status { width: 8px; height: 8px; border-radius: 50%; background: #4ADE80; }
+
+    /* ── Message list ────────────────────────────────────────────────── */
+    #sb-messages {
+      flex: 1; overflow-y: auto; padding: 16px 14px; display: flex;
+      flex-direction: column; gap: 10px; scroll-behavior: smooth;
+    }
+    #sb-messages::-webkit-scrollbar { width: 4px; }
+    #sb-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .sb-msg { display: flex; align-items: flex-end; gap: 8px; max-width: 85%; }
+    .sb-msg.bot { align-self: flex-start; }
+    .sb-msg.me  { align-self: flex-end; flex-direction: row-reverse; }
+
+    .sb-bubble {
+      padding: 10px 14px; border-radius: var(--radius); font-size: 14px;
+      line-height: 1.5; white-space: pre-wrap; word-break: break-word;
+    }
+    .bot .sb-bubble { background: var(--bubble-bot); color: var(--text-bot);
+                      border-bottom-left-radius: 4px; border: 1px solid var(--border); }
+    .me  .sb-bubble { background: var(--bubble-me); color: var(--text-me);
+                      border-bottom-right-radius: 4px; }
+
+    .sb-bot-icon { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+                   background: var(--brand); display: flex; align-items: center;
+                   justify-content: center; font-size: 14px; }
+
+    /* ── Button chips ────────────────────────────────────────────────── */
+    .sb-chips {
+      display: flex; flex-wrap: wrap; gap: 8px; align-self: flex-start;
+      max-width: 90%; padding-left: 36px;
+    }
+    .sb-chip {
+      background: #fff; border: 1.5px solid var(--brand); color: var(--brand);
+      border-radius: 999px; padding: 6px 14px; font-size: 13px; cursor: pointer;
+      transition: all .15s; white-space: nowrap;
+    }
+    .sb-chip:hover  { background: var(--brand); color: #fff; }
+    .sb-chip.used   { opacity: .4; pointer-events: none; }
+
+    /* ── Typing indicator ────────────────────────────────────────────── */
+    .sb-typing { display: flex; align-items: center; gap: 4px; padding: 10px 14px; }
+    .sb-typing span {
+      width: 7px; height: 7px; border-radius: 50%; background: #CBD5E1;
+      animation: blink 1.2s infinite;
+    }
+    .sb-typing span:nth-child(2) { animation-delay: .2s; }
+    .sb-typing span:nth-child(3) { animation-delay: .4s; }
+    @keyframes blink { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
+
+    /* ── Input bar ───────────────────────────────────────────────────── */
+    .sb-input-bar {
+      padding: 10px 12px; border-top: 1px solid var(--border);
+      display: flex; gap: 8px; align-items: center; flex-shrink: 0;
+    }
+    #sb-input {
+      flex: 1; border: 1.5px solid var(--border); border-radius: 24px;
+      padding: 9px 16px; font-size: 14px; outline: none;
+      transition: border-color .2s; resize: none; line-height: 1.4;
+    }
+    #sb-input:focus { border-color: var(--brand); }
+    #sb-send {
+      width: 40px; height: 40px; border-radius: 50%; background: var(--brand);
+      border: none; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; flex-shrink: 0; transition: background .15s;
+    }
+    #sb-send:hover { background: var(--brand-dk); }
+    #sb-send svg { fill: #fff; }
+
+    /* ── Markdown-lite styling ───────────────────────────────────────── */
+    .sb-bubble strong { font-weight: 600; }
+    .sb-bubble em     { font-style: italic; opacity: .8; }
+    .sb-bubble code   { background: rgba(0,0,0,.08); border-radius: 4px;
+                        padding: 0 4px; font-family: monospace; font-size: 13px; }
+  </style>
+</head>
+<body>
+<div id="snapbot">
+
+  <!-- Header -->
+  <div class="sb-header">
+    <div class="sb-avatar">🏛️</div>
+    <div class="sb-header-info">
+      <strong>SnapBot</strong>
+      <span>Civic Issue Reporter</span>
+    </div>
+    <div class="sb-status"></div>
+  </div>
+
+  <!-- Messages -->
+  <div id="sb-messages"></div>
+
+  <!-- Input -->
+  <div class="sb-input-bar">
+    <input id="sb-input" type="text" placeholder="Type a message…" autocomplete="off" />
+    <button id="sb-send" aria-label="Send">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path d="M2 21L23 12 2 3v7l15 2-15 2z"/></svg>
+    </button>
+  </div>
+
+</div>
+
+<script>
+  // ── Config ──────────────────────────────────────────────────────────────────
+  // When embedding, set SNAPBOT_API to your deployed SnapBot URL
+  const SNAPBOT_API = window.SNAPBOT_API || '/api/chat';
+  const userId      = 'web-' + Math.random().toString(36).slice(2, 10);
+
+  // ── DOM refs ────────────────────────────────────────────────────────────────
+  const msgList  = document.getElementById('sb-messages');
+  const input    = document.getElementById('sb-input');
+  const sendBtn  = document.getElementById('sb-send');
+
+  // ── Markdown-lite renderer ──────────────────────────────────────────────────
+  function renderMd(text) {
+    return text
+      .replace(/\*(.*?)\*/g,  '<strong>$1</strong>')
+      .replace(/_(.*?)_/g,    '<em>$1</em>')
+      .replace(/`(.*?)`/g,    '<code>$1</code>');
+  }
+
+  // ── Append a bot text bubble ────────────────────────────────────────────────
+  function addBotBubble(text) {
+    const wrap = document.createElement('div');
+    wrap.className = 'sb-msg bot';
+    wrap.innerHTML = `
+      <div class="sb-bot-icon">🏛️</div>
+      <div class="sb-bubble">${renderMd(text)}</div>`;
+    msgList.appendChild(wrap);
+    scrollDown();
+  }
+
+  // ── Append user bubble ──────────────────────────────────────────────────────
+  function addUserBubble(text) {
+    const wrap = document.createElement('div');
+    wrap.className = 'sb-msg me';
+    wrap.innerHTML = `<div class="sb-bubble">${text}</div>`;
+    msgList.appendChild(wrap);
+    scrollDown();
+  }
+
+  // ── Render button chips ─────────────────────────────────────────────────────
+  function addChips(buttons) {
+    // Disable previous chips
+    document.querySelectorAll('.sb-chip').forEach(c => c.classList.add('used'));
+
+    const row = document.createElement('div');
+    row.className = 'sb-chips';
+
+    buttons.forEach(btn => {
+      const chip = document.createElement('button');
+      chip.className = 'sb-chip';
+      chip.textContent = btn.label;
+      chip.onclick = () => {
+        row.querySelectorAll('.sb-chip').forEach(c => c.classList.add('used'));
+        addUserBubble(btn.label);
+        send(null, btn.id);
+      };
+      row.appendChild(chip);
+    });
+
+    msgList.appendChild(row);
+    scrollDown();
+  }
+
+  // ── Typing indicator ────────────────────────────────────────────────────────
+  let typingEl = null;
+  function showTyping() {
+    typingEl = document.createElement('div');
+    typingEl.className = 'sb-msg bot';
+    typingEl.innerHTML = `
+      <div class="sb-bot-icon">🏛️</div>
+      <div class="sb-bubble sb-typing">
+        <span></span><span></span><span></span>
+      </div>`;
+    msgList.appendChild(typingEl);
+    scrollDown();
+  }
+  function hideTyping() {
+    if (typingEl) { typingEl.remove(); typingEl = null; }
+  }
+
+  function scrollDown() {
+    msgList.scrollTop = msgList.scrollHeight;
+  }
+
+  // ── Send a message to the API ────────────────────────────────────────────────
+  async function send(text, buttonId) {
+    showTyping();
+    input.disabled = true;
+    sendBtn.disabled = true;
+
+    try {
+      const body = { userId };
+      if (buttonId) { body.buttonId = buttonId; body.type = 'button'; }
+      else          { body.text = text; body.type = 'text'; }
+
+      const res = await fetch(SNAPBOT_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+
+      hideTyping();
+      (data.replies || []).forEach(reply => {
+        if (reply.type === 'text')    addBotBubble(reply.text);
+        if (reply.type === 'buttons') {
+          if (reply.text) addBotBubble(reply.text);
+          addChips(reply.buttons);
+        }
+      });
+    } catch (err) {
+      hideTyping();
+      addBotBubble('⚠️ Connection error. Please try again.');
+      console.error('SnapBot error:', err);
+    } finally {
+      input.disabled = false;
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  }
+
+  // ── Input handlers ───────────────────────────────────────────────────────────
+  sendBtn.addEventListener('click', () => {
+    const txt = input.value.trim();
+    if (!txt) return;
+    addUserBubble(txt);
+    input.value = '';
+    send(txt);
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendBtn.click();
+    }
+  });
+
+  // ── Auto-greet on load ───────────────────────────────────────────────────────
+  window.addEventListener('load', () => send('hi'));
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+[
+  {
+    "id": "client-hyderabad",
+    "name": "Hyderabad Municipal Corporation",
+    "whatsapp": {
+      "phoneNumberId": "1200744906448490",
+      "accessToken":   "EAAOpnOHaGlQBR0AgMtBJ708JK1ezPLnlZAhtV4XEXI2i50TErEleqslzkOM39iQEVs6saI6OZAKTTiuvs17t2tgAueOkVopWdoaaSOjQEXZCZCRxi2tCP0CbgUwIwVZC6aQoNqVsKnOY6IEc8zchlWdtDrVj2sTZCHZA8D1RiuTuNtq7F3RojOYnNcwVXfcsZBPNL0SSbFkrWEKqM6o8JZB4R72zOnKaD0spUKIsfWO0nuTrA3ZBJZCZCbvjtTCVSS5QZAeuw0oiTb6IZAZA116uMg2kFXxswZDZD",
+      "verifyToken":   "snapbot-verify-hyd-2024"
+    },
+    "sheets": {
+      "sheetId": "1ABC_HYDERABAD_SHEET_ID_HERE"
+    }
+  },
