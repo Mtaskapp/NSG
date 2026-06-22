@@ -12,11 +12,12 @@ const path        = require('path');
 const logger      = require('./utils/logger');
 
 // Adapters
-const waRouter                           = require('./adapters/whatsapp');
-const { router: tgRouter, initTelegram } = require('./adapters/telegram');
-const { router: lineRouter, initLine }   = require('./adapters/line');
-const { router: webRouter }              = require('./adapters/web');
-const clientRegistry                     = require('./config/clients');
+const waRouter                             = require('./adapters/whatsapp');
+const { router: tgRouter, initTelegram }   = require('./adapters/telegram');
+const { router: lineRouter, initLine }     = require('./adapters/line');
+const { router: twilioRouter, initTwilio } = require('./adapters/twilio');
+const { router: webRouter }                = require('./adapters/web');
+const clientRegistry                       = require('./config/clients');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -43,7 +44,8 @@ const limiter = rateLimit({
 app.use('/webhook', limiter);
 
 // ── Body parsers ──────────────────────────────────────────────────────────────
-// WhatsApp / Telegram / Web: JSON body
+// WhatsApp (Meta) / Telegram / Web: JSON body.
+// Twilio posts form-urlencoded — parsed inside its own router (adapters/twilio.js).
 app.use(express.json({ limit: '5mb' }));
 
 // Static assets (widget CSS/JS if needed)
@@ -59,6 +61,7 @@ app.get('/health', (req, res) => {
     version: process.env.npm_package_version || '1.0.0',
     platforms: {
       whatsapp: allClients.length > 0,
+      twilio:   !!process.env.TWILIO_ACCOUNT_SID,
       telegram: !!process.env.TELEGRAM_BOT_TOKEN,
       line:     !!process.env.LINE_CHANNEL_SECRET,
       web:      process.env.WEB_WIDGET_ENABLED !== 'false',
@@ -72,13 +75,15 @@ app.get('/health', (req, res) => {
 });
 
 // ── Platform webhooks ─────────────────────────────────────────────────────────
-const WA_PATH   = process.env.WA_WEBHOOK_PATH   || '/webhook/whatsapp';
-const TG_PATH   = process.env.TELEGRAM_WEBHOOK_PATH || '/webhook/telegram';
-const LINE_PATH = process.env.LINE_WEBHOOK_PATH || '/webhook/line';
+const WA_PATH     = process.env.WA_WEBHOOK_PATH       || '/webhook/whatsapp';
+const TG_PATH     = process.env.TELEGRAM_WEBHOOK_PATH || '/webhook/telegram';
+const LINE_PATH   = process.env.LINE_WEBHOOK_PATH     || '/webhook/line';
+const TWILIO_PATH = process.env.TWILIO_WEBHOOK_PATH   || '/webhook/twilio';
 
-app.use(WA_PATH,   waRouter);
-app.use(TG_PATH,   tgRouter);
-app.use(LINE_PATH, lineRouter);
+app.use(WA_PATH,     waRouter);
+app.use(TG_PATH,     tgRouter);
+app.use(LINE_PATH,   lineRouter);
+app.use(TWILIO_PATH, twilioRouter);
 
 // Web widget API (always enabled unless explicitly disabled)
 if (process.env.WEB_WIDGET_ENABLED !== 'false') {
@@ -98,6 +103,7 @@ app.use((err, req, res, _next) => {
 app.listen(PORT, () => {
   logger.info(`🚀 SnapBot listening on port ${PORT} (${process.env.NODE_ENV || 'development'})`);
   logger.info(`   WhatsApp  → POST ${WA_PATH}`);
+  logger.info(`   Twilio    → POST ${TWILIO_PATH}`);
   logger.info(`   Telegram  → POST ${TG_PATH}`);
   logger.info(`   LINE      → POST ${LINE_PATH}`);
   logger.info(`   Web API   → POST /api/chat`);
@@ -106,6 +112,7 @@ app.listen(PORT, () => {
   // Boot adapters that need initialization
   initTelegram();
   initLine();
+  initTwilio();
 });
 
 module.exports = app; // export for tests
