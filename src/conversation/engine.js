@@ -55,7 +55,7 @@ async function processMessage(msg) {
     return [
       {
         type: 'text',
-          text: `👋 *Welcome to SnapBot*\n\nYour civic issue reporting assistant.\n\n📋 I'll help you report a problem to the right department quickly.\n\n─────────────────\n🔽 What type of issue are you reporting?`,
+        text: `👋 Welcome to *SnapBot* — your civic issue reporting assistant!\n\nI'll help you report a problem to the right department quickly.\n\nWhat type of issue are you reporting?`,
       },
       {
         type: 'buttons',
@@ -75,7 +75,7 @@ async function processMessage(msg) {
     updateSession(platform, userId, { step: 'ASK_DESCRIPTION', data: { issueType: issue.id, issueLabel: issue.label } });
     return [{
       type: 'text',
-        text: `✅ *Selected:* ${issue.label}\n\n─────────────────\n📝 *Please describe the problem in a few words.*\n\n_Example: "The streetlight on Oak Street has been out for 3 days."_`,
+      text: `Got it — *${issue.label}*.\n\nPlease describe the problem in a few words.\n_Example: "The streetlight on Oak Street has been out for 3 days."_`,
     }];
   }
 
@@ -87,7 +87,7 @@ async function processMessage(msg) {
     updateSession(platform, userId, { step: 'ASK_LOCATION', data: { ...session.data, description: msg.text.trim() } });
     return [{
       type: 'text',
-        text: `📍 Where is this happening?\n\nYou can:\n• Type an address or landmark\n• Share your location (tap 📎 → Location)\n• Or type "skip" to continue without location`,
+      text: `📍 Where is this happening?\n\nYou can:\n• Type an address or landmark\n• Share your location (tap 📎 → Location)\n• Or type "skip" to continue without location`,
     }];
   }
 
@@ -105,7 +105,7 @@ async function processMessage(msg) {
     updateSession(platform, userId, { step: 'ASK_PHOTO', data: { ...session.data, location: locationText } });
     return [{
       type: 'text',
-        text: `📸 *Can you share a photo?*\n\nThis helps the department assess urgency.\nType *skip* to proceed without a photo.`,
+      text: `📸 Can you share a photo of the issue?\n\nThis helps the department assess urgency.\nType "skip" to proceed without a photo.`,
     }];
   }
 
@@ -128,13 +128,14 @@ async function processMessage(msg) {
 
     return [{
       type: 'text',
-        text: `✅ *Review your report*\n\n` +
-              `📌 *Issue:* ${d.issueLabel}\n` +
-              `📝 *Description:* ${d.description}\n` +
-              `📍 *Location:* ${d.location}\n` +
-              `📸 *Photo:* ${photoUrl ? 'Attached ✓' : 'Not provided'}\n` +
-              `🏢 *Assigned to:* ${dept.name}\n\n` +
-              `─────────────────\n🔽 Submit this report?`,    }, {
+      text: `✅ *Review your report:*\n\n` +
+            `📌 *Issue:* ${d.issueLabel}\n` +
+            `📝 *Description:* ${d.description}\n` +
+            `📍 *Location:* ${d.location}\n` +
+            `📸 *Photo:* ${photoUrl ? 'Attached' : 'Not provided'}\n` +
+            `🏢 *Will be sent to:* ${dept.name}\n\n` +
+            `Submit this report?`,
+    }, {
       type: 'buttons',
       text: 'Confirm:',
       buttons: [
@@ -186,14 +187,13 @@ async function processMessage(msg) {
 
     return [{
       type: 'text',
-        text: `🎉 *Report submitted successfully!*\n\n` +
-              `🆔 *Case ID:* ${caseId}\n` +
-              `🏢 *Assigned to:* ${dept.name}\n` +
-              `📧 *Contact:* ${dept.contact}\n\n` +
-              `─────────────────\n` +
-              `🕐 You'll receive a response within *2 business days*.\n\n` +
-              `💪 Thank you for making your community better!\n\n` +
-              `_Send "hi" to report another issue._`,
+      text: `🎉 *Report submitted!*\n\n` +
+            `🆔 *Case ID:* \`${caseId}\`\n` +
+            `🏢 *Assigned to:* ${dept.name}\n` +
+            `📧 *Contact:* ${dept.contact}\n\n` +
+            `You'll typically receive a response within *2 business days*.\n\n` +
+            `Thank you for making your community better! 💪\n\n` +
+            `_Send "hi" to report another issue._`,
     }];
   }
 
