@@ -22,6 +22,12 @@ const trackingRouter                        = require('./routes/tracking');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
+const trackingLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: parseInt(process.env.TRACKING_RATE_LIMIT_MAX_REQUESTS || '30'),
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // ── Security middleware ────────────────────────────────────────────────────────
 app.use(helmet({ contentSecurityPolicy: false })); // CSP relaxed for widget iframe
@@ -67,11 +73,7 @@ app.get('/health', (req, res) => {
       line:     !!process.env.LINE_CHANNEL_SECRET,
       web:      process.env.WEB_WIDGET_ENABLED !== 'false',
     },
-    clients: allClients.map(c => ({
-      id:    c.id,
-      name:  c.name,
-      phone: c.whatsapp?.phoneNumberId,
-    })),
+    clientCount: allClients.length,
   });
 });
 
@@ -93,7 +95,7 @@ if (process.env.WEB_WIDGET_ENABLED !== 'false') {
 }
 
 // Keep this after platform/API routes so only otherwise-unmatched paths become tickets.
-app.use('/', trackingRouter);
+app.use('/', trackingLimiter, trackingRouter);
 
 // ── 404 / Error handlers ──────────────────────────────────────────────────────
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));

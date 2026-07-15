@@ -90,6 +90,11 @@ R2_PUBLIC_BASE_URL=https://cdn.example.com
 URL. Images are stored under the `issues/` prefix. The R2 access key should
 have permission to write objects to this bucket.
 
+For Railway, store the private multi-client registry in an encrypted
+`CLIENTS_CONFIG_JSON` variable instead of committing `clients.json`. The value
+is the complete JSON array from `clients.json`, with real per-client Meta
+credentials and Google Sheet IDs.
+
 ---
 
 ## Quick Start (Local Dev)

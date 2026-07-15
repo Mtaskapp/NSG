@@ -11,6 +11,8 @@ services:
       - .env
     volumes:
       - ./logs:/app/logs
+      # Keep tenant credentials outside the image and mount them read-only.
+      - ./clients.json:/app/clients.json:ro
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
       interval: 30s

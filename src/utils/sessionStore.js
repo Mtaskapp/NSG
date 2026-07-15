@@ -33,8 +33,8 @@ function getSession(platform, userId) {
 
 // WhatsApp-specific facade. Keeping this behind the same store makes replacing
 // the Map with Redis/Postgres a one-module change.
-function getWhatsAppSession(phoneNumber) {
-  const session = getSession('whatsapp', phoneNumber);
+function getWhatsAppSession(phoneNumber, clientId = 'default') {
+  const session = getSession(`whatsapp:${clientId}`, phoneNumber);
   if (!session.phone_number) {
     Object.assign(session, {
       phone_number: phoneNumber,
@@ -48,12 +48,12 @@ function getWhatsAppSession(phoneNumber) {
   return session;
 }
 
-function updateWhatsAppSession(phoneNumber, updates) {
-  return updateSession('whatsapp', phoneNumber, updates);
+function updateWhatsAppSession(phoneNumber, updates, clientId = 'default') {
+  return updateSession(`whatsapp:${clientId}`, phoneNumber, updates);
 }
 
-function clearWhatsAppSession(phoneNumber) {
-  clearSession('whatsapp', phoneNumber);
+function clearWhatsAppSession(phoneNumber, clientId = 'default') {
+  clearSession(`whatsapp:${clientId}`, phoneNumber);
 }
 
 function clearSession(platform, userId) {

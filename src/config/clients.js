@@ -11,7 +11,17 @@ const CONFIG_PATH = path.resolve(process.cwd(), 'clients.json');
 let _clients = [];
 
 function load() {
-  if (!fs.existsSync(CONFIG_PATH)) {
+  // Railway and other managed hosts should provide the tenant registry as an
+  // encrypted variable instead of baking clients.json into the deployment.
+  if (process.env.CLIENTS_CONFIG_JSON) {
+    try {
+      _clients = JSON.parse(process.env.CLIENTS_CONFIG_JSON);
+      logger.info(`[Clients] Loaded ${_clients.length} client(s) from CLIENTS_CONFIG_JSON`);
+    } catch (err) {
+      logger.error('[Clients] Failed to parse CLIENTS_CONFIG_JSON:', err.message);
+      process.exit(1);
+    }
+  } else if (!fs.existsSync(CONFIG_PATH)) {
     logger.warn('[Clients] clients.json not found — falling back to single-client env vars');
     // Legacy single-client fallback so existing .env setups keep working
     if (process.env.WA_PHONE_NUMBER_ID) {
@@ -28,16 +38,15 @@ function load() {
         },
       }];
     }
-    return;
-  }
-
-  try {
+  } else {
+    try {
     const raw = fs.readFileSync(CONFIG_PATH, 'utf8');
     _clients  = JSON.parse(raw);
     logger.info(`[Clients] Loaded ${_clients.length} client(s): ${_clients.map(c => c.id).join(', ')}`);
-  } catch (err) {
+    } catch (err) {
     logger.error('[Clients] Failed to parse clients.json:', err.message);
     process.exit(1);
+    }
   }
 
   // Validate each client
@@ -48,6 +57,9 @@ function load() {
     if (!client.whatsapp?.accessToken)       missing.push('whatsapp.accessToken');
     if (!client.whatsapp?.verifyToken)       missing.push('whatsapp.verifyToken');
     if (!client.sheets?.sheetId)             missing.push('sheets.sheetId');
+    if (/^REPLACE_WITH_|_HERE$/.test(client.whatsapp?.accessToken || '')) missing.push('whatsapp.accessToken (placeholder)');
+    if (/^REPLACE_WITH_|_HERE$/.test(client.whatsapp?.verifyToken || '')) missing.push('whatsapp.verifyToken (placeholder)');
+    if (/^REPLACE_WITH_|_HERE$/.test(client.sheets?.sheetId || '')) missing.push('sheets.sheetId (placeholder)');
     if (missing.length) {
       logger.error(`[Clients] Client "${client.id}" missing: ${missing.join(', ')}`);
       process.exit(1);

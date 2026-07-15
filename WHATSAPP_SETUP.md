@@ -257,26 +257,22 @@ Meta will immediately send a GET request to your webhook URL with your verify to
 You should receive:
 
 ```
-👋 Welcome to SnapBot — your civic issue reporting assistant!
-
-I'll help you report a problem to the right department quickly.
-
-What type of issue are you reporting?
-[💡 Streetlight] [🌳 Park / Garden] [🚧 Road / Pothole]
-[🧹 Cleanliness] [🌊 Drainage / Sewage] [🚦 Traffic Signal]
-[❓ Other]
+Please choose the type of issue:
+[🛣️ Roads & Lights] [🗑️ Waste & Garbage] [🚰 Water & Leaks]
 ```
 
 ### Full test flow
 
 | You send | SnapBot replies |
 |----------|----------------|
-| `hi` | Welcome + issue type buttons |
-| Tap **🚧 Road / Pothole** | Asks for description |
-| `There's a big pothole on MG Road near the bus stop` | Asks for location |
-| `MG Road, near Ameerpet Bus Stop` | Asks for photo |
-| `skip` | Shows confirmation summary |
-| Tap **✅ Yes, Submit** | Returns Case ID, department assigned |
+| `hi` | Three issue-category buttons |
+| Tap **🛣️ Roads & Lights** | Asks for a brief description |
+| `The streetlight is broken near the bus stop` | Sends a native location request |
+| Share a WhatsApp GPS location | Asks for a clear image |
+| Upload an image | Logs the ticket and returns a tracking link |
+
+Typing `hi`, `hello`, `start`, `restart`, or `cancel` at any point resets the
+current report for that WhatsApp client.
 
 After submission, check your Google Sheet — a new row should appear with all case details.
 

@@ -1,5 +1,6 @@
 const express = require('express');
 const { findTrackingTicket } = require('../handlers/trackingHandler');
+const clients = require('../config/clients');
 const logger = require('../utils/logger');
 
 const router = express.Router();
@@ -8,7 +9,15 @@ const esc = value => String(value || '').replace(/[&<>"']/g, c => ({ '&': '&amp;
 router.get('/:ticketId', async (req, res) => {
   const id = String(req.params.ticketId || '').trim().slice(0, 32);
   try {
-    const ticket = await findTrackingTicket(id);
+    const sheetIds = [...new Set([
+      process.env.GOOGLE_SHEET_ID,
+      ...clients.getAll().map(client => client.sheets?.sheetId),
+    ].filter(Boolean))];
+    let ticket = null;
+    for (const sheetId of sheetIds) {
+      ticket = await findTrackingTicket(id, sheetId);
+      if (ticket) break;
+    }
     if (!ticket) return res.status(404).type('html').send('<h1>Ticket not found</h1>');
     const status = String(ticket.status || 'Pending').toLowerCase();
     const step = status.includes('resolv') ? 3 : status.includes('progress') ? 2 : 1;

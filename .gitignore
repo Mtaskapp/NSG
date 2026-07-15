@@ -1,5 +1,10 @@
 .env
+!.env.example
+clients.json
 node_modules/
 logs/
 coverage/
 *.log
+.DS_Store
+*-service-account*.json
+snapbot-502409-b1e33ccd46f7.json

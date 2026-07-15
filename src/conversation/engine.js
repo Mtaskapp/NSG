@@ -217,48 +217,59 @@ const CATEGORY_BUTTONS = [
 ];
 
 function ticketId() {
-  return crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, 5);
+  return `VIW-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 }
 
 // Exact WhatsApp Cloud API workflow. This is intentionally separate from the
 // legacy cross-platform flow above so existing Telegram/LINE users are stable.
 async function processWhatsAppMessage(msg, client) {
-  const session = getWhatsAppSession(msg.userId);
+  const clientId = msg.clientId || client.id || 'default';
+  const resetWords = ['hi', 'hello', 'start', 'restart', 'cancel'];
+  if (msg.type === 'text' && resetWords.includes((msg.text || '').trim().toLowerCase())) {
+    clearWhatsAppSession(msg.userId, clientId);
+  }
+  const session = getWhatsAppSession(msg.userId, clientId);
   const state = session.current_state;
 
   if (state === 'START') {
-    updateWhatsAppSession(msg.userId, { current_state: 'AWAITING_CATEGORY' });
+    updateWhatsAppSession(msg.userId, { current_state: 'AWAITING_CATEGORY' }, clientId);
     return [{ type: 'buttons', text: 'Please choose the type of issue:', buttons: CATEGORY_BUTTONS }];
   }
   if (state === 'AWAITING_CATEGORY') {
     const selected = CATEGORY_BUTTONS.find(button => button.id === msg.buttonId);
     if (!selected) return [{ type: 'buttons', text: 'Please choose one of these categories:', buttons: CATEGORY_BUTTONS }];
-    updateWhatsAppSession(msg.userId, { current_state: 'AWAITING_DESC', category: selected.id });
+    updateWhatsAppSession(msg.userId, { current_state: 'AWAITING_DESC', category: selected.id }, clientId);
     return [{ type: 'text', text: 'Got it! Please text us a brief description of the specific problem.' }];
   }
   if (state === 'AWAITING_DESC') {
     if (!msg.text || !msg.text.trim()) return [{ type: 'text', text: 'Please text us a brief description of the specific problem.' }];
-    updateWhatsAppSession(msg.userId, { current_state: 'AWAITING_LOC', description: msg.text.trim() });
+    updateWhatsAppSession(msg.userId, { current_state: 'AWAITING_LOC', description: msg.text.trim() }, clientId);
     return [{ type: 'location_request', text: 'Thank you. Now, please tap the location sharing tool below to pin where this issue is located.' }];
   }
   if (state === 'AWAITING_LOC') {
     if (!msg.location) return [{ type: 'text', text: 'Please share the location using WhatsApp’s location sharing tool.' }];
     const { lat, lng } = msg.location;
-    updateWhatsAppSession(msg.userId, { current_state: 'AWAITING_IMAGE', location_url: `https://www.google.com/maps?q=${lat},${lng}` });
+    updateWhatsAppSession(msg.userId, { current_state: 'AWAITING_IMAGE', location_url: `https://www.google.com/maps?q=${lat},${lng}` }, clientId);
     return [{ type: 'text', text: 'Perfect. Lastly, please snap or upload a clear picture of the issue.' }];
   }
   if (state === 'AWAITING_IMAGE') {
     if (msg.type !== 'image' || !msg.mediaId) return [{ type: 'text', text: 'Please snap or upload a clear picture of the issue.' }];
-    const imageUrl = await mediaHandler.saveWhatsAppImage(msg.mediaId, client.whatsapp.accessToken);
-    const id = ticketId();
-    const timestamp = new Date().toISOString();
-    const row = [id, timestamp, msg.userId, session.category, session.description, session.location_url, imageUrl, 'Pending'];
-    await trackingHandler.appendTrackingRow(row, client.sheets.sheetId);
-    clearWhatsAppSession(msg.userId);
-    const base = (process.env.APP_URL || 'https://www.viw.com').replace(/\/$/, '');
-    return [{ type: 'text', text: `Thank you! Your issue has been successfully logged.\n\nTicket ID: #${id}\nYou can track real-time resolution progress directly here: ${base}/${id}` }];
+    try {
+      const imageUrl = await mediaHandler.saveWhatsAppImage(msg.mediaId, client.whatsapp.accessToken);
+      const id = ticketId();
+      const timestamp = new Date().toISOString();
+      const row = [id, timestamp, msg.userId, session.category, session.description, session.location_url, imageUrl, 'Pending'];
+      await trackingHandler.appendTrackingRow(row, client.sheets.sheetId);
+      clearWhatsAppSession(msg.userId, clientId);
+      const base = (process.env.APP_URL || '').replace(/\/$/, '');
+      const tracking = base ? `\nYou can track real-time resolution progress directly here: ${base}/${id}` : '';
+      return [{ type: 'text', text: `Thank you! Your issue has been successfully logged.\n\nTicket ID: #${id}${tracking}` }];
+    } catch (err) {
+      logger.error(`[WhatsApp:${client.id}] Failed to finalize report:`, err.message);
+      return [{ type: 'text', text: '⚠️ Something went wrong saving your report. Please try sending the photo again in a moment.' }];
+    }
   }
-  clearWhatsAppSession(msg.userId);
+  clearWhatsAppSession(msg.userId, clientId);
   return processWhatsAppMessage(msg, client);
 }
 
