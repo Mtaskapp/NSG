@@ -3,9 +3,15 @@
 // Receives a normalized message object, returns a list of reply objects.
 
 const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const { getSession, updateSession, clearSession } = require('../utils/sessionStore');
 const sheetsHandler = require('../handlers/sheetsHandler');
 const logger = require('../utils/logger');
+const mediaHandler = require('../handlers/mediaHandler');
+const trackingHandler = require('../handlers/trackingHandler');
+const {
+  getWhatsAppSession, updateWhatsAppSession, clearWhatsAppSession,
+} = require('../utils/sessionStore');
 
 // ─── Issue categories ────────────────────────────────────────────────────────
 const ISSUE_TYPES = [
@@ -204,4 +210,56 @@ async function processMessage(msg) {
   }];
 }
 
-module.exports = { processMessage };
+const CATEGORY_BUTTONS = [
+  { id: 'cat_infra', label: '🛣️ Roads & Lights' },
+  { id: 'cat_waste', label: '🗑️ Waste & Garbage' },
+  { id: 'cat_water', label: '🚰 Water & Leaks' },
+];
+
+function ticketId() {
+  return crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, 5);
+}
+
+// Exact WhatsApp Cloud API workflow. This is intentionally separate from the
+// legacy cross-platform flow above so existing Telegram/LINE users are stable.
+async function processWhatsAppMessage(msg, client) {
+  const session = getWhatsAppSession(msg.userId);
+  const state = session.current_state;
+
+  if (state === 'START') {
+    updateWhatsAppSession(msg.userId, { current_state: 'AWAITING_CATEGORY' });
+    return [{ type: 'buttons', text: 'Please choose the type of issue:', buttons: CATEGORY_BUTTONS }];
+  }
+  if (state === 'AWAITING_CATEGORY') {
+    const selected = CATEGORY_BUTTONS.find(button => button.id === msg.buttonId);
+    if (!selected) return [{ type: 'buttons', text: 'Please choose one of these categories:', buttons: CATEGORY_BUTTONS }];
+    updateWhatsAppSession(msg.userId, { current_state: 'AWAITING_DESC', category: selected.id });
+    return [{ type: 'text', text: 'Got it! Please text us a brief description of the specific problem.' }];
+  }
+  if (state === 'AWAITING_DESC') {
+    if (!msg.text || !msg.text.trim()) return [{ type: 'text', text: 'Please text us a brief description of the specific problem.' }];
+    updateWhatsAppSession(msg.userId, { current_state: 'AWAITING_LOC', description: msg.text.trim() });
+    return [{ type: 'location_request', text: 'Thank you. Now, please tap the location sharing tool below to pin where this issue is located.' }];
+  }
+  if (state === 'AWAITING_LOC') {
+    if (!msg.location) return [{ type: 'text', text: 'Please share the location using WhatsApp’s location sharing tool.' }];
+    const { lat, lng } = msg.location;
+    updateWhatsAppSession(msg.userId, { current_state: 'AWAITING_IMAGE', location_url: `https://www.google.com/maps?q=${lat},${lng}` });
+    return [{ type: 'text', text: 'Perfect. Lastly, please snap or upload a clear picture of the issue.' }];
+  }
+  if (state === 'AWAITING_IMAGE') {
+    if (msg.type !== 'image' || !msg.mediaId) return [{ type: 'text', text: 'Please snap or upload a clear picture of the issue.' }];
+    const imageUrl = await mediaHandler.saveWhatsAppImage(msg.mediaId, client.whatsapp.accessToken);
+    const id = ticketId();
+    const timestamp = new Date().toISOString();
+    const row = [id, timestamp, msg.userId, session.category, session.description, session.location_url, imageUrl, 'Pending'];
+    await trackingHandler.appendTrackingRow(row, client.sheets.sheetId);
+    clearWhatsAppSession(msg.userId);
+    const base = (process.env.APP_URL || 'https://www.viw.com').replace(/\/$/, '');
+    return [{ type: 'text', text: `Thank you! Your issue has been successfully logged.\n\nTicket ID: #${id}\nYou can track real-time resolution progress directly here: ${base}/${id}` }];
+  }
+  clearWhatsAppSession(msg.userId);
+  return processWhatsAppMessage(msg, client);
+}
+
+module.exports = { processMessage, processWhatsAppMessage, CATEGORY_BUTTONS };

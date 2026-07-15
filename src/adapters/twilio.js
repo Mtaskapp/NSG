@@ -4,17 +4,17 @@
 // no code changes needed when you move from one to the other, only env vars.
 
 const express = require('express');
-const twilio  = require('twilio');
+const twilio = require('twilio');
 const { processMessage } = require('../conversation/engine');
-const logger  = require('../utils/logger');
+const logger = require('../utils/logger');
 
 const router = express.Router();
 
-const ACCOUNT_SID  = process.env.TWILIO_ACCOUNT_SID;
-const AUTH_TOKEN   = process.env.TWILIO_AUTH_TOKEN;
-const FROM_NUMBER  = process.env.TWILIO_WHATSAPP_FROM;   // e.g. "whatsapp:+14155238886"
-const APP_URL       = process.env.APP_URL;
-const WEBHOOK_PATH  = process.env.TWILIO_WEBHOOK_PATH || '/webhook/twilio';
+const ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+const AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+const FROM_NUMBER = process.env.TWILIO_WHATSAPP_FROM;   // e.g. "whatsapp:+14155238886"
+const APP_URL = process.env.APP_URL;
+const WEBHOOK_PATH = process.env.TWILIO_WEBHOOK_PATH || '/webhook/twilio';
 
 let client = null;
 
@@ -48,7 +48,7 @@ router.post('/', async (req, res) => {
 
   if (AUTH_TOKEN && APP_URL) {
     const signature = req.header('X-Twilio-Signature');
-    const fullUrl    = `${APP_URL}${WEBHOOK_PATH}`;
+    const fullUrl = `${APP_URL}${WEBHOOK_PATH}`;
     const valid = twilio.validateRequest(AUTH_TOKEN, signature, fullUrl, req.body);
     if (!valid) {
       logger.warn('[Twilio] Invalid request signature — ignoring');
@@ -59,7 +59,7 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    const msg     = normalizeMessage(req.body);
+    const msg = normalizeMessage(req.body);
     const replies = await processMessage(msg);
     for (const reply of replies) {
       await sendMessage(req.body.From, reply);
@@ -71,7 +71,13 @@ router.post('/', async (req, res) => {
 
 function normalizeMessage(body) {
   const from = body.From; // "whatsapp:+919226285788"
-  const base = { platform: 'twilio', userId: from };
+  const base = {
+    platform: 'twilio',
+    userId: from,
+    clientId: 'default',
+    sheetId: process.env.GOOGLE_SHEET_ID,  // ← add this
+  };
+
 
   // Location share
   if (body.Latitude && body.Longitude) {

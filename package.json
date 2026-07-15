@@ -12,6 +12,7 @@
     "docker:run": "docker run -p 3000:3000 --env-file .env snapbot"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1086.0",
     "@line/bot-sdk": "^9.1.0",
     "axios": "^1.6.0",
     "cors": "^2.8.5",

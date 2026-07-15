@@ -31,6 +31,31 @@ function getSession(platform, userId) {
   return newSession;
 }
 
+// WhatsApp-specific facade. Keeping this behind the same store makes replacing
+// the Map with Redis/Postgres a one-module change.
+function getWhatsAppSession(phoneNumber) {
+  const session = getSession('whatsapp', phoneNumber);
+  if (!session.phone_number) {
+    Object.assign(session, {
+      phone_number: phoneNumber,
+      current_state: 'START',
+      category: '',
+      description: '',
+      location_url: '',
+      timestamp: new Date(session.createdAt),
+    });
+  }
+  return session;
+}
+
+function updateWhatsAppSession(phoneNumber, updates) {
+  return updateSession('whatsapp', phoneNumber, updates);
+}
+
+function clearWhatsAppSession(phoneNumber) {
+  clearSession('whatsapp', phoneNumber);
+}
+
 function clearSession(platform, userId) {
   sessions.delete(`${platform}:${userId}`);
 }
@@ -52,4 +77,7 @@ setInterval(() => {
   }
 }, 10 * 60 * 1000);
 
-module.exports = { getSession, clearSession, updateSession };
+module.exports = {
+  getSession, clearSession, updateSession,
+  getWhatsAppSession, updateWhatsAppSession, clearWhatsAppSession,
+};

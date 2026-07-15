@@ -4,12 +4,12 @@
 
 const express = require('express');
 const axios   = require('axios');
-const { processMessage } = require('../conversation/engine');
+const { processWhatsAppMessage } = require('../conversation/engine');
 const clients = require('../config/clients');
 const logger  = require('../utils/logger');
 
 const router   = express.Router();
-const BASE_URL = 'https://graph.facebook.com/v19.0';
+const BASE_URL = `https://graph.facebook.com/${process.env.WA_GRAPH_VERSION || 'v20.0'}`;
 
 // ── Webhook verification (GET) ────────────────────────────────────────────────
 router.get('/', (req, res) => {
@@ -48,7 +48,7 @@ router.post('/', async (req, res) => {
 
     for (const waMsg of changes.messages) {
       const msg     = normalizeMessage(waMsg, client.id, client.sheets.sheetId);
-      const replies = await processMessage(msg);
+      const replies = await processWhatsAppMessage(msg, client);
       for (const reply of replies) {
         await sendMessage(waMsg.from, reply, client);
       }
@@ -70,7 +70,7 @@ function normalizeMessage(waMsg, clientId, sheetId) {
       return { ...base, type: 'button', buttonId: btn?.id, text: btn?.title };
     }
     case 'image':
-      return { ...base, mediaUrl: waMsg.image?.id };
+      return { ...base, mediaId: waMsg.image?.id };
     case 'location':
       return {
         ...base,
@@ -93,6 +93,17 @@ async function sendMessage(to, reply, client) {
       payload = {
         messaging_product: 'whatsapp', to, type: 'text',
         text: { body: reply.text, preview_url: false },
+      };
+      break;
+
+    case 'location_request':
+      payload = {
+        messaging_product: 'whatsapp', to, type: 'interactive',
+        interactive: {
+          type: 'location_request_message',
+          body: { text: reply.text },
+          action: { name: 'send_location' },
+        },
       };
       break;
 

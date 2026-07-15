@@ -18,6 +18,7 @@ const { router: lineRouter, initLine }     = require('./adapters/line');
 const { router: twilioRouter, initTwilio } = require('./adapters/twilio');
 const { router: webRouter }                = require('./adapters/web');
 const clientRegistry                       = require('./config/clients');
+const trackingRouter                        = require('./routes/tracking');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -90,6 +91,9 @@ if (process.env.WEB_WIDGET_ENABLED !== 'false') {
   app.use('/api/chat', webRouter);
   logger.info('[Web] Widget API enabled at /api/chat');
 }
+
+// Keep this after platform/API routes so only otherwise-unmatched paths become tickets.
+app.use('/', trackingRouter);
 
 // ── 404 / Error handlers ──────────────────────────────────────────────────────
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));

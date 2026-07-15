@@ -47,6 +47,10 @@ src/
 │   └── engine.js              # Platform-agnostic state machine
 ├── handlers/
 │   └── sheetsHandler.js       # Google Sheets logging
+│   ├── mediaHandler.js        # WhatsApp media download + Cloudflare R2
+│   └── trackingHandler.js     # Ticket append and portal lookup
+├── routes/
+│   └── tracking.js            # GET /:ticketId progress portal
 └── utils/
     ├── sessionStore.js        # In-memory sessions (swap Redis in prod)
     └── logger.js              # Winston structured logging
@@ -54,10 +58,37 @@ public/
 └── widget.html                # Embeddable web chat widget
 ```
 
+The Meta WhatsApp webhook uses a dedicated five-state flow (`START`,
+`AWAITING_CATEGORY`, `AWAITING_DESC`, `AWAITING_LOC`, `AWAITING_IMAGE`). Images
+are downloaded with the WhatsApp bearer token, uploaded to the S3-compatible
+Cloudflare R2 endpoint, and logged with an exactly eight-column tracking row.
+Set the `R2_*` variables in `.env`; `R2_PUBLIC_BASE_URL` must point at a public
+custom domain or R2 public bucket URL.
+
 **Key design decisions:**
 - The `engine.js` state machine is 100% platform-agnostic — it knows nothing about WhatsApp or Telegram.
 - Each adapter normalises its platform's events into a common message format.
 - Sessions are in-memory with a 30-minute TTL; swap `sessionStore.js` for Redis when running multiple instances.
+
+## Cloudflare R2 Image Storage
+
+WhatsApp image messages are not stored on Railway. SnapBot downloads the
+temporary WhatsApp media asset, uploads the binary image to Cloudflare R2, and
+writes the resulting public CDN URL into the Google Sheets tracking row.
+
+Configure these variables in Railway:
+
+```env
+R2_ACCOUNT_ID=your_cloudflare_account_id
+R2_ACCESS_KEY_ID=your_r2_access_key
+R2_SECRET_ACCESS_KEY=your_r2_secret_key
+R2_BUCKET=issue-images
+R2_PUBLIC_BASE_URL=https://cdn.example.com
+```
+
+`R2_PUBLIC_BASE_URL` must point to a public R2 custom domain or public bucket
+URL. Images are stored under the `issues/` prefix. The R2 access key should
+have permission to write objects to this bucket.
 
 ---
 
@@ -544,7 +575,7 @@ await mailer.send({
 |---|---|
 | Sessions | Replace `sessionStore.js` with Redis (use [Upstash](https://upstash.com) for free managed Redis) |
 | Multiple instances | Sessions in Redis + stateless app = horizontal scaling works |
-| Photo storage | Save WA/TG media to S3 or GCS; store the URL in Sheets |
+| Photo storage | Save WhatsApp media to Cloudflare R2; store the public URL in Sheets |
 | Rate limiting | Move from in-process rate limiter to Redis-backed (`rate-limit-redis`) |
 | Monitoring | Add [Sentry](https://sentry.io) for error tracking; use `/health` for uptime checks |
 | CI/CD | GitHub Actions → build Docker image → push to registry → deploy |

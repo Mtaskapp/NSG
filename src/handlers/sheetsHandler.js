@@ -18,11 +18,14 @@ let _sheetsClient = null;
 async function getClient() {
   if (_sheetsClient) return _sheetsClient;
 
-  const auth = new google.auth.JWT({
-    email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-    key:   (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  });
+  const scopes = ['https://www.googleapis.com/auth/spreadsheets'];
+  const auth = process.env.GOOGLE_APPLICATION_CREDENTIALS
+    ? new google.auth.GoogleAuth({ keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS, scopes })
+    : new google.auth.JWT({
+      email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+      key:   (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+      scopes,
+    });
 
   _sheetsClient = google.sheets({ version: 'v4', auth });
   return _sheetsClient;
